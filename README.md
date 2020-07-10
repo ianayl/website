@@ -1,4 +1,4 @@
-# ianli.gq
+# Ianli.gq
 My website, generated using shsg
 
 ... or at least that's the plan

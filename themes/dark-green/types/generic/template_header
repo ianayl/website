@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Ian Li</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" type="text/css" href="styles/styles.css">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<div id="nav">
+<a id="about" href="about.html">About</a>
+<a id="home" href="index.html">Li, Ian</a>
+<a id="blog" href="blog/index.html">Blog</a>
+</div>

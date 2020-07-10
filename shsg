@@ -3,13 +3,16 @@
 # shsg - shell site generator
 #
 # A simple static site generator written in pure POSIX sh
+# 
+# HUGE DISCLAIMER: shsg is WIP, so it won't support markdown completely yet
+# 
 # - The themes are located in ./themes
 # - The pages for the website are located in ./pages
 # - The finished website is located at ./public
 
 usage() {
-    >&2 echo "Usage: ./ssg.sh [-bch]
-\t-b\tbuild the site into ./public
+    >&2 echo "\nUsage: ./shsg [OPTION] [THEME] ...
+\t-b\tbuild the site into ./public using [THEME]
 \t-c\tclean up current site
 \t-h\tprint this help message
 "
@@ -18,20 +21,66 @@ usage() {
 # clean up after myself
 clean() {
     echo "==> Cleaning up..."
-    rm -vr ./public
+    [ -d './public' ] && rm -vr ./public
 }
 
 # temporarily what build is for now
 build() {
-    clean
-    mkdir -v public
-    cp -rv src/styles public/styles
-    cp -rv src/index.html public/index.html
+    [ -z $1 ] && usage && exit
+
+    if [ -d themes/$1 ]
+    then 
+        clean
+        echo "--- Using theme $1"
+
+        echo "==> Building site into ./public..."
+        mkdir -v public
+        mkdir -v .cache
+        # Copy styles over
+        cp -rv "themes/$1/styles" "public/styles"
+
+        # Processing per markdown file
+        # TODO add full file path to $f
+        # to track where a file ends up in ./public, their relative position in
+        # ./pages is used
+        for f in $(ls -R pages | grep -e '\.md$')
+        do
+            # Don't process directories ending in .md
+            [ -d pages/$f ] && continue
+            echo "--- Processing $f..."
+            # Caching first line for later use
+            f_1l=$(head -n 1 "pages/$f")
+
+            f_type=$(echo $f_1l | sed -e 's/<!--//; s/-->//; s/\s//')
+            echo "--- $f has type $f_type."
+
+            while IFS= read -r l || [ -n "$l" ]
+            do
+                [ -z "$l" ] && continue
+                # Discard first line in the file
+                [ "$l" = $f_1l ] && continue
+                # I don't need f_1l anymore
+                unset f_1l
+                printf '%s\n' "$l"
+            done < "pages/$f"
+            # TODO if a component, eg template_header isnt found in the type
+            # folder of the theme, refer to generic for the component
+            # TODO the different parameters in a custom element has a
+            # delimiter of :::, just as how they are defined by $name:, which 
+            # starts in a :::. This way the awk command can just parse the
+            # indexes
+        done
+        cp -rv "themes/$1/index.html" "public/index.html"
+
+        rm -rv .cache
+        echo "==> Build finished."
+    else
+        echo "==> Error: theme $1 not found." && exit
+    fi
 }
 
-[ "$1" ] || usage
 case $1 in
-    -b) build ;;
+    -b) build $2 ;;
     -c) clean ;;
     *) usage ;;
 esac

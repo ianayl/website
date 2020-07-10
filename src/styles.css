@@ -30,12 +30,17 @@ body {
     padding: 14px;
     transition-property: color;
     transition-duration: 0.14s;
+    text-decoration: none;
 }
 
 #nav a:hover {
     color: #77a572;
     transition-property: color;
     transition-duration: 0.14s;
+}
+
+#nav #home {
+    text-decoration: underline;
 }
 
 #homepage-title {

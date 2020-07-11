@@ -24,55 +24,104 @@ clean() {
     [ -d './public' ] && rm -vr ./public
 }
 
+# TODO if a component, eg template_header isnt found in the type
+# folder of the theme, refer to generic for the component
+# use this helper function
+whichcomp() {
+    echo ok
+}
+
+# process text first
+handle_raw_text() {
+    echo ok
+}
+
+# handle p elements
+handle_p() {
+    echo ok
+}
+
+# handle h* elements
+handle_h() {
+    h_file="$f_type_loc/h${#l_test}"
+    if [ -f "$h_file" ] 
+    then
+        # get rid of starting #'s
+        proc_txt=${l#${l_test}}
+        # get rid of space after #'s, if it exists
+        proc_txt=${proc_txt#' '}
+        echo $f_final_dest
+        cat "$h_file" | sed -e "s/###PARAM1###/$proc_txt/g" >> $f_final_dest
+    else
+        handle_p
+    fi
+}
+
 # temporarily what build is for now
 build() {
     [ -z $1 ] && usage && exit
 
-    if [ -d themes/$1 ]
+    if [ -d "themes/$1" ]
     then 
         clean
         echo "--- Using theme $1"
 
         echo "==> Building site into ./public..."
         mkdir -v public
-        mkdir -v .cache
         # Copy styles over
         cp -rv "themes/$1/styles" "public/styles"
 
-        # Processing per markdown file
-        # TODO add full file path to $f
-        # to track where a file ends up in ./public, their relative position in
-        # ./pages is used
-        for f in $(ls -R pages | grep -e '\.md$')
+        # Process per markdown file, but also don't process dotfiles
+        for f in $(find pages | grep -e '\.md$' | grep -v '\/\.')
         do
             # Don't process directories ending in .md
-            [ -d pages/$f ] && continue
+            [ -d $f ] && continue
+
             echo "--- Processing $f..."
             # Caching first line for later use
-            f_1l=$(head -n 1 "pages/$f")
+            f_1l=$(head -n 1 $f)
 
-            f_type=$(echo $f_1l | sed -e 's/<!--//; s/-->//; s/\s//')
-            echo "--- $f has type $f_type."
+            f_type=$(echo "$f_1l" | sed -e 's/<!--//; s/-->//; s/\s//g')
+            # if type is not defined, default to generic
+            [ -z "$f_type" ] && f_type='generic'
 
+            f_type_loc="themes/$1/filetype/$f_type"
+            if [ -d "$f_type_loc" ]
+            then
+                echo "--- $f has type $f_type."
+            else
+                echo "==> Error: $f has undeclared type $f_type."
+                exit
+            fi
+
+            f_final_dest=$(echo $f | sed -e 's/^pages/public/; s/md$/html/')
+            # Copy the header over to start the file
+            mkdir -pv ${f_final_dest%/*} # removes filename
+            cp -v "$f_type_loc/template_header" "$f_final_dest"
+
+            # Processing each file
             while IFS= read -r l || [ -n "$l" ]
             do
                 [ -z "$l" ] && continue
                 # Discard first line in the file
-                [ "$l" = $f_1l ] && continue
-                # I don't need f_1l anymore
-                unset f_1l
+                [ "$l" = "$f_1l" ] && continue
+
+                # h* of any number
+                l_test="$(echo $l | grep -o '^#*')"
+                [ -n "$l_test" ] && handle_h
+
                 printf '%s\n' "$l"
-            done < "pages/$f"
-            # TODO if a component, eg template_header isnt found in the type
-            # folder of the theme, refer to generic for the component
+            done < "$f"
             # TODO the different parameters in a custom element has a
-            # delimiter of :::, just as how they are defined by $name:, which 
+            # delimiter of :::, just as how they are defined by $name:::, which 
             # starts in a :::. This way the awk command can just parse the
             # indexes
-        done
-        cp -rv "themes/$1/index.html" "public/index.html"
 
-        rm -rv .cache
+            # Placing the footer of the file to finish it up
+            cat "$f_type_loc/template_footer" >> "$f_final_dest"
+        done
+        # cp -rv "themes/$1/index.html" "public/index.html"
+
         echo "==> Build finished."
     else
         echo "==> Error: theme $1 not found." && exit

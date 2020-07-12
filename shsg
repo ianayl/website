@@ -33,12 +33,43 @@ whichcomp() {
 
 # process text first
 handle_raw_text() {
-    echo ok
+    processed="$1"
+    # check for images
+    img_file="$f_type_loc/img"
+    if [ -f "$img_file" ]
+    then
+        # cycle through every image found
+        for img in "$(echo $1 | grep -oP "\!\[.*?\]\(.*?\)")"
+        do
+            [ -z "$img" ] && continue
+
+            # isolate for first param
+            param_1="$(echo $img | grep -oP "(?<=\[)(.*?)(?=\\])")"
+            # escape characters in param_1
+            e_param_1=$(echo "$param_1" | sed -e 's/[\/&]/\\&/g')
+
+            # isolate for 2nd param
+            param_2="$(echo $img | grep -oP "(?<=\()(.*?)(?=\\))")"
+            # escape characters in param_2
+            e_param_2=$(echo "$param_2" | sed -e 's/[\/&]/\\&/g')
+
+            # generate resulting value
+            res="$(cat "$img_file" | \
+               sed "s/###PARAM1###/$e_param_1/g; s/###PARAM2###/$e_param_2/g")"
+            e_res="$(echo "$res" | sed -e 's/[\/&]/\\&/g')"
+            processed=$(echo $processed | \
+                        sed -r "s/\!\[[^]]*\]\([^)]*\)/$e_res/")
+        done
+    fi
+
+    # make finished processed variable a paragraph
+    processed="<p>$processed</p>"
+    echo $processed
 }
 
 # handle p elements
 handle_p() {
-    echo ok
+    handle_raw_text "$1"
 }
 
 # handle h* elements
@@ -47,14 +78,18 @@ handle_h() {
     if [ -f "$h_file" ] 
     then
         # get rid of starting #'s
-        proc_txt=${l#${l_test}}
+        res=${l#${l_test}}
         # get rid of space after #'s, if it exists
-        proc_txt=${proc_txt#' '}
-        echo $f_final_dest
-        cat "$h_file" | sed -e "s/###PARAM1###/$proc_txt/g" >> $f_final_dest
+        res=${res#' '}
+        e_res=$(echo "$res" | sed -e 's/[\/&]/\\&/g')
+        cat "$h_file" | sed -e "s/###PARAM1###/$e_res/g" >> $f_final_dest
     else
         handle_p
     fi
+}
+
+handle_special() {
+    echo ok
 }
 
 # temporarily what build is for now
@@ -106,11 +141,19 @@ build() {
                 # Discard first line in the file
                 [ "$l" = "$f_1l" ] && continue
 
+                # echo "$l"
+
                 # h* of any number
                 l_test="$(echo $l | grep -o '^#*')"
-                [ -n "$l_test" ] && handle_h
+                [ -n "$l_test" ] && handle_h && continue
+                
+                # Custom elements
+                l_test="$(echo $l | grep -o '^\$\w*:::..')"
+                [ -n "$l_test" ] && handle_special && continue
 
-                printf '%s\n' "$l"
+                # No type, it's a p
+                handle_p "$l" && echo $processed >> $f_final_dest
+
             done < "$f"
             # TODO the different parameters in a custom element has a
             # delimiter of :::, just as how they are defined by $name:::, which 

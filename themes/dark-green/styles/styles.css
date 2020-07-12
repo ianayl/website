@@ -12,7 +12,7 @@ html {
 }
 
 body {
-    max-width: 1000px;
+    max-width: 777px;
     margin: auto;
     padding: 28px;
 }
@@ -76,3 +76,11 @@ p.caption {
         font-size: 700%;
     }
 }
+
+/* small browser size on desktop */
+@media (min-width: 1246px) {
+    body {
+        max-width: 1000px;
+    }
+}
+

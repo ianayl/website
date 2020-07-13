@@ -43,8 +43,13 @@ body {
     text-decoration: underline;
 }
 
+h1 {
+    font-size: 70px;
+}
+
 #homepage-title {
     font-size: 470%;
+    margin-bottom: 35px;
 }
 
 img {

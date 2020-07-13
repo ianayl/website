@@ -35,13 +35,19 @@ whichcomp() {
 
 # Process text first
 handle_raw_text() {
+
+# set IFS as \n
+oldIFS=$IFS
+IFS='
+'
     processed="$1"
+
     # Check for images
     img_file="$f_type_loc/img"
     if [ -f "$img_file" ]
     then
         # cycle through every image found
-        for img in "$(echo $1 | grep -oP "\!\[.*?\]\(.*?\)")"
+        for img in $(echo "$processed" | grep -oP "\!\[.*?\]\(.*?\)")
         do
             [ -z "$img" ] && continue
 
@@ -63,6 +69,41 @@ handle_raw_text() {
                         sed -r "s/\!\[[^]]*\]\([^)]*\)/$e_res/")
         done
     fi
+
+    # Checks for a (links)
+    a_file="$f_type_loc/a"
+    if [ -f "$a_file" ]
+    then
+        # Cycle through every a found
+        for a in $(echo "$processed" | grep -oP "\[.*?\]\(.*?\)")
+        do
+            [ -z "$a" ] && continue
+
+            echo FOR $a
+
+            # Isolate for first param
+            param_1="$(echo $a | grep -oP "(?<=\[)(.*?)(?=\\])")"
+            # Escape characters in param_1
+            e_param_1=$(echo "$param_1" | sed -e 's/[\/&]/\\&/g')
+            echo FIRST $param_1
+
+            # Isolate for 2nd param
+            param_2="$(echo $a | grep -oP "(?<=\()(.*?)(?=\\))")"
+            # Escape characters in param_2
+            e_param_2=$(echo "$param_2" | sed -e 's/[\/&]/\\&/g')
+            echo SECOND $e_param_2
+
+            # Generate resulting value
+            res="$(cat "$a_file" | \
+               sed "s/###PARAM1###/$e_param_1/g; s/###PARAM2###/$e_param_2/g")"
+            e_res="$(echo "$res" | sed -e 's/[\/&]/\\&/g')"
+            processed=$(echo "$processed" | \
+                        sed -r "s/\[[^]]*\]\([^)]*\)/$e_res/")
+        done
+    fi
+
+# get back oldIFS
+IFS=$oldIFS
 }
 
 # Handle p elements
@@ -86,10 +127,13 @@ handle_p() {
     else
         echo "==> Warning: no template file for p found, skipping."
     fi
+
+    # TODO Check 2: the input was not straight up html
 }
 
 # handle h* elements
 handle_h() {
+    # TODO insert into handle_raw_text
     h_file="$f_type_loc/h${#l_test}"
     if [ -f "$h_file" ] 
     then
@@ -105,7 +149,7 @@ handle_h() {
 }
 
 handle_special() {
-    echo ok
+    echo special
 }
 
 # temporarily what build is for now

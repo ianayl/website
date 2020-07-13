@@ -79,19 +79,15 @@ IFS='
         do
             [ -z "$a" ] && continue
 
-            echo FOR $a
-
             # Isolate for first param
             param_1="$(echo $a | grep -oP "(?<=\[)(.*?)(?=\\])")"
             # Escape characters in param_1
             e_param_1=$(echo "$param_1" | sed -e 's/[\/&]/\\&/g')
-            echo FIRST $param_1
 
             # Isolate for 2nd param
             param_2="$(echo $a | grep -oP "(?<=\()(.*?)(?=\\))")"
             # Escape characters in param_2
             e_param_2=$(echo "$param_2" | sed -e 's/[\/&]/\\&/g')
-            echo SECOND $e_param_2
 
             # Generate resulting value
             res="$(cat "$a_file" | \
@@ -173,12 +169,20 @@ build() {
             [ -d $f ] && continue
 
             echo "--- Processing $f..."
+
             # Caching first line for later use
             f_1l=$(head -n 1 $f)
 
-            f_type=$(echo "$f_1l" | sed -e 's/<!--//; s/-->//; s/\s//g')
-            # if type is not defined, default to generic
-            [ -z "$f_type" ] && f_type='generic'
+            # If type line does not exist
+            if [ -z "$(echo "$f_1l" | grep '<!--.*-->')" ] 
+            then
+                f_type='generic'
+                f_1l=''
+            else
+                f_type=$(echo "$f_1l" | sed -e 's/<!--//; s/-->//; s/\s//g')
+                # if type is not defined, default to generic
+                [ -z "$f_type" ] && f_type='generic'
+            fi
 
             f_type_loc="themes/$1/filetype/$f_type"
             if [ -d "$f_type_loc" ]
@@ -186,7 +190,7 @@ build() {
                 echo "--- $f has type $f_type."
             else
                 echo "==> Error: $f has undeclared type $f_type."
-                exit
+                continue
             fi
 
             f_final_dest=$(echo $f | sed -e 's/^pages/public/; s/md$/html/')
@@ -198,7 +202,7 @@ build() {
             while IFS= read -r l || [ -n "$l" ]
             do
                 [ -z "$l" ] && continue
-                # Discard first line in the file
+                # Discard first line in the file if it's a type line
                 [ "$l" = "$f_1l" ] && continue
 
                 # echo "$l"

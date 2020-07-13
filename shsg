@@ -26,15 +26,17 @@ clean() {
 
 # TODO if a component, eg template_header isnt found in the type
 # folder of the theme, refer to generic for the component
+# this just returns where the file to use is, and if there is no files 
+# it returns nothing 
 # use this helper function
 whichcomp() {
     echo ok
 }
 
-# process text first
+# Process text first
 handle_raw_text() {
     processed="$1"
-    # check for images
+    # Check for images
     img_file="$f_type_loc/img"
     if [ -f "$img_file" ]
     then
@@ -43,33 +45,47 @@ handle_raw_text() {
         do
             [ -z "$img" ] && continue
 
-            # isolate for first param
+            # Isolate for first param
             param_1="$(echo $img | grep -oP "(?<=\[)(.*?)(?=\\])")"
-            # escape characters in param_1
+            # Escape characters in param_1
             e_param_1=$(echo "$param_1" | sed -e 's/[\/&]/\\&/g')
 
-            # isolate for 2nd param
+            # Isolate for 2nd param
             param_2="$(echo $img | grep -oP "(?<=\()(.*?)(?=\\))")"
-            # escape characters in param_2
+            # Escape characters in param_2
             e_param_2=$(echo "$param_2" | sed -e 's/[\/&]/\\&/g')
 
-            # generate resulting value
+            # Generate resulting value
             res="$(cat "$img_file" | \
                sed "s/###PARAM1###/$e_param_1/g; s/###PARAM2###/$e_param_2/g")"
             e_res="$(echo "$res" | sed -e 's/[\/&]/\\&/g')"
-            processed=$(echo $processed | \
+            processed=$(echo "$processed" | \
                         sed -r "s/\!\[[^]]*\]\([^)]*\)/$e_res/")
         done
     fi
-
-    # make finished processed variable a paragraph
-    processed="<p>$processed</p>"
-    echo $processed
 }
 
-# handle p elements
+# Handle p elements
 handle_p() {
-    handle_raw_text "$1"
+    handle_raw_text "$l"
+
+    # Checks to confirm that this is actually a p:
+
+    # Check 1: the input was only an image and nothing else
+    not_p_check=$(echo "$l" | grep -oP "\!\[.*?\]\(.*?\)")
+    [ "$l" = "$not_p_check" ] && \
+        echo "$processed" >> $f_final_dest && return 0
+
+    p_file="$f_type_loc/p"
+    if [ -f "$p_file" ]
+    then
+        # Making sure $processed has the proper escapes to go into sed
+        e_processed=$(echo "$processed" | sed -e 's/[\/&]/\\&/g')
+        # Add p tag to final file
+        cat "$p_file" | sed -e "s/###PARAM1###/$e_processed/" >> $f_final_dest
+    else
+        echo "==> Warning: no template file for p found, skipping."
+    fi
 }
 
 # handle h* elements
@@ -84,7 +100,7 @@ handle_h() {
         e_res=$(echo "$res" | sed -e 's/[\/&]/\\&/g')
         cat "$h_file" | sed -e "s/###PARAM1###/$e_res/g" >> $f_final_dest
     else
-        handle_p
+        echo "==> Warning: no template file for h${#l_test} found, skipping."
     fi
 }
 
@@ -152,7 +168,7 @@ build() {
                 [ -n "$l_test" ] && handle_special && continue
 
                 # No type, it's a p
-                handle_p "$l" && echo $processed >> $f_final_dest
+                handle_p
 
             done < "$f"
             # TODO the different parameters in a custom element has a

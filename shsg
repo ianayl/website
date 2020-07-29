@@ -98,6 +98,57 @@ IFS='
         done
     fi
 
+    # Checks for b (bold)
+    b_file="$f_type_loc/b"
+    if [ -f "$b_file" ]
+    then
+        # Cycle through every b found
+        for b in $(echo "$processed" | grep -oP "\*\*.*?\*\*")
+        do
+            [ -z "$b" ] && continue
+
+            # get rid of starting *'s
+            param_1=${b##\*\*}
+            # get rid of ending *'s
+            param_1=${param_1%%\*\*}
+            e_param_1=$(echo "$param_1" | sed -e 's/[\/&]/\\&/g')
+
+            # Generate resulting value
+            res="$(cat "$b_file" | sed "s/###PARAM1###/$e_param_1/g")"
+            e_res="$(echo "$res" | sed -e 's/[\/&]/\\&/g')"
+            # TODO this is broken, this breaks nesting
+            processed=$(echo "$processed" | \
+                        sed "s/\\*\\*\\([^\\*]*\\)\\*\\*/$e_res/")
+        done
+    fi
+
+    # Checks for i (italics)
+    i_file="$f_type_loc/i"
+    if [ -f "$i_file" ]
+    then
+        # Cycle through every i found
+        for i in $(echo "$processed" | grep -oP "\*.*?\*")
+        do
+            echo "i: $i"
+            [ -z "$i" ] && continue
+
+            # get rid of starting *
+            param_1=${i##\*}
+            echo "  param 1: $param_1"
+            # get rid of ending *
+            param_1=${param_1%%\*}
+            echo "  param 1: $param_1"
+            e_param_1=$(echo "$param_1" | sed -e 's/[\/&]/\\&/g')
+            echo "  e_param_1: $e_param_1"
+
+            # Generate resulting value
+            res="$(cat "$i_file" | sed "s/###PARAM1###/$e_param_1/g")"
+            e_res="$(echo "$res" | sed -e 's/[\/&]/\\&/g')"
+            processed=$(echo "$processed" | \
+                        sed "s/\\*\\([^\\*]*\\)\\*/$e_res/")
+        done
+    fi
+
 # get back oldIFS
 IFS=$oldIFS
 }

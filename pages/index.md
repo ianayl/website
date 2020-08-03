@@ -9,5 +9,3 @@ Check out [about](/about.html) for my contact information, as well as what I hav
 
 ![What can I say? I love me some trees.](https://source.unsplash.com/xFjAftU8lMY)
 $img_caption$What can I say? I love me some trees. Credits goto [Nick Scheerbart](https://unsplash.com/photos/xFjAftU8lMY).
-
-This site was generated with [shsg](https://github.com/ianayl/website), a simple static site generator that I am working on, written in POSIX sh

@@ -327,7 +327,7 @@ build() {
                 [ -n "$l_test" ] && handle_h && continue
                 
                 # Custom elements
-                l_test="$(echo $l | grep -o '^\$\w*$..')"
+                l_test="$(echo $l | grep '^\$\w*\$')"
                 [ -n "$l_test" ] && handle_special && continue
 
                 # No type, it's a p

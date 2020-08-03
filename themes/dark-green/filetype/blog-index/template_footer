@@ -1,2 +1,6 @@
 </body>
+<footer>
+<p>This site was generated with <a href="https://github.com/ianayl/website">shsg</a>, a simple static site generator that I am working on, written in POSIX sh.<p>
+<p>The source for this site is available at <a href="https://github.com/ianayl/website">ianayl/website</a>.<p>
+</footer>
 </html>

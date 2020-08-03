@@ -214,7 +214,7 @@ handle_special() {
         do
             handle_raw_text $param
             e_res=$(echo "$processed" | sed -e 's/[\/&]/\\&/g')
-            cat "$h_file" | sed -e "s/###PARAM1###/$e_res/g" >> $f_final_dest
+            cat "$special_file" | sed -e "s/###PARAM1###/$e_res/g" >> $f_final_dest
             
             param_no=$(($param_no + 1))
         done

@@ -36,9 +36,9 @@ whichcomp() {
 # Process text first
 handle_raw_text() {
 
-# set IFS as \n
-oldIFS=$IFS
-IFS='
+    # set IFS as \n
+    oldIFS=$IFS
+    IFS='
 '
     processed="$1"
 
@@ -196,7 +196,33 @@ handle_h() {
 }
 
 handle_special() {
-    echo special
+
+    # remove the leading $
+    raw_special="${l#$}"
+
+    special_type=$(echo $raw_special | cut -d '$' -f '1')
+
+    special_file="$f_type_loc/$special_type"
+    if [ -f "$special_file" ] 
+    then
+
+        oldIFS="$IFS"
+        IFS='$'
+
+        param_no=1
+        for param in $(echo "$raw_special" | cut -d '$' -f '2-')
+        do
+            handle_raw_text $param
+            e_res=$(echo "$processed" | sed -e 's/[\/&]/\\&/g')
+            cat "$h_file" | sed -e "s/###PARAM1###/$e_res/g" >> $f_final_dest
+            
+            param_no=$(($param_no + 1))
+        done
+
+        IFS="$oldIFS"
+    else
+        echo "==> Warning: no template file for $special_type found, skipping."
+    fi
 }
 
 # temporarily what build is for now
@@ -263,7 +289,7 @@ build() {
                 [ -n "$l_test" ] && handle_h && continue
                 
                 # Custom elements
-                l_test="$(echo $l | grep -o '^\$\w*:::..')"
+                l_test="$(echo $l | grep -o '^\$\w*$..')"
                 [ -n "$l_test" ] && handle_special && continue
 
                 # No type, it's a p

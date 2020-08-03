@@ -98,8 +98,45 @@ handle_raw_text() {
         done
     fi
 
-    # Checks for b (bold)
+    # bold and italics files should be defined here
     b_file="$f_type_loc/b"
+    i_file="$f_type_loc/i"
+
+    # Checks for *** (bold and italics combined)
+    if [ -f "$b_file" ] && [ -f "$i_file" ]
+    then
+        # Cycle through every bi found
+        for bi in $(echo "$processed" | grep -oP "\*\*\*.*?\*\*\*")
+        do
+            [ -z "$bi" ] && continue
+
+            # Get rid of starting *'s
+            param_1=${bi##\*\*\*}
+            # Get rid of ending *'s
+            param_1=${param_1%%\*\*\*}
+            e_param_1=$(echo "$param_1" | sed -e 's/[\/&]/\\&/g')
+
+            # Nest result in i first
+            res="$(cat "$i_file" | sed "s/###PARAM1###/$e_param_1/g")"
+            e_res="$(echo "$res" | sed -e 's/[\/&]/\\&/g')"
+            # ... Then nest result in b
+            res="$(cat "$b_file" | sed "s/###PARAM1###/$e_res/g")"
+            e_res="$(echo "$res" | sed -e 's/[\/&]/\\&/g')"
+
+            # Replace first two ***'s with a placeholder, ^&^, for easy parsing
+            #
+            # The rationale for only replacing 2 ***'s at a time is because
+            # there could be an odd number of ***'s, which would not get 
+            # processed properly, thus leaving the placeholder ^&^ randomly
+            # in the resulting webpage.
+            processed=$(echo "$processed" | \
+                        sed "s/\\*\\*\\*/^\\&^/; s/\\*\\*\\*/^\\&^/")
+            processed=$(echo "$processed" | \
+                        sed "s/\\^\\&\\^\\(.*\\)\\^\\&\\^/$e_res/")
+        done
+    fi
+
+    # Checks for b (bold)
     if [ -f "$b_file" ]
     then
         # Cycle through every b found
@@ -107,39 +144,40 @@ handle_raw_text() {
         do
             [ -z "$b" ] && continue
 
-            # get rid of starting *'s
+            # Get rid of starting *'s
             param_1=${b##\*\*}
-            # get rid of ending *'s
+            # Get rid of ending *'s
             param_1=${param_1%%\*\*}
             e_param_1=$(echo "$param_1" | sed -e 's/[\/&]/\\&/g')
 
             # Generate resulting value
             res="$(cat "$b_file" | sed "s/###PARAM1###/$e_param_1/g")"
             e_res="$(echo "$res" | sed -e 's/[\/&]/\\&/g')"
-            # TODO this is broken, this breaks nesting
+
+            # Replace first two **'s with a placeholder, ^%^, for easy parsing
+            #
+            # the rationale for this is outlined above, for parsing both bold
+            # and italics combined
             processed=$(echo "$processed" | \
-                        sed "s/\\*\\*\\([^\\*]*\\)\\*\\*/$e_res/")
+                        sed "s/\\*\\*/^%^/; s/\\*\\*/^%^/")
+            processed=$(echo "$processed" | \
+                        sed "s/\\^\\%\\^\\(.*\\)\\^\\%\\^/$e_res/")
         done
     fi
 
     # Checks for i (italics)
-    i_file="$f_type_loc/i"
     if [ -f "$i_file" ]
     then
         # Cycle through every i found
         for i in $(echo "$processed" | grep -oP "\*.*?\*")
         do
-            echo "i: $i"
             [ -z "$i" ] && continue
 
             # get rid of starting *
             param_1=${i##\*}
-            echo "  param 1: $param_1"
             # get rid of ending *
             param_1=${param_1%%\*}
-            echo "  param 1: $param_1"
             e_param_1=$(echo "$param_1" | sed -e 's/[\/&]/\\&/g')
-            echo "  e_param_1: $e_param_1"
 
             # Generate resulting value
             res="$(cat "$i_file" | sed "s/###PARAM1###/$e_param_1/g")"
@@ -180,7 +218,6 @@ handle_p() {
 
 # handle h* elements
 handle_h() {
-    # TODO insert into handle_raw_text
     h_file="$f_type_loc/h${#l_test}"
     if [ -f "$h_file" ] 
     then
@@ -188,7 +225,8 @@ handle_h() {
         res=${l#${l_test}}
         # get rid of space after #'s, if it exists
         res=${res#' '}
-        e_res=$(echo "$res" | sed -e 's/[\/&]/\\&/g')
+        handle_raw_text "$res"
+        e_res=$(echo "$processed" | sed -e 's/[\/&]/\\&/g')
         cat "$h_file" | sed -e "s/###PARAM1###/$e_res/g" >> $f_final_dest
     else
         echo "==> Warning: no template file for h${#l_test} found, skipping."
@@ -212,7 +250,7 @@ handle_special() {
         param_no=1
         for param in $(echo "$raw_special" | cut -d '$' -f '2-')
         do
-            handle_raw_text $param
+            handle_raw_text "$param"
             e_res=$(echo "$processed" | sed -e 's/[\/&]/\\&/g')
             cat "$special_file" | sed -e "s/###PARAM1###/$e_res/g" >> $f_final_dest
             
@@ -296,10 +334,6 @@ build() {
                 handle_p
 
             done < "$f"
-            # TODO the different parameters in a custom element has a
-            # delimiter of :::, just as how they are defined by $name:::, which 
-            # starts in a :::. This way the awk command can just parse the
-            # indexes
 
             # Placing the footer of the file to finish it up
             cat "$f_type_loc/template_footer" >> "$f_final_dest"
